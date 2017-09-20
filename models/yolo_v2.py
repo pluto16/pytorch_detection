@@ -6,14 +6,26 @@ import torch.nn.functiional as F
 import numpy as np
 from easydict import EasyDict as edict
 
+
+class EmptyModule(nn.Module):
+	def __init__(self):
+		super(EmptyModule,self).__init__()
+	def forward(self,x)
+		return x
+
 class yolo_v2(nn.Module):
 	def __init__(self):
 		super(yolo_v2,self).__init__()
-		self.blocks = self.create_blocks()
-		self.models  = self.create_model()
-		self.header = torch.IntTensor([0,0,0,0])
-		self.seen   = 0
-
+		self.blocks   = self.create_blocks()
+		self.models   = self.create_model()
+		self.header   = torch.IntTensor([0,0,0,0])
+		self.seen     = 0
+		self.anchors_str  = "1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053, 11.2364, 10.0071"
+		self.classes      = 20
+		self.anchor_step  = 2
+		self.anchors      = [float(i) for i in self.anchors_str.lstrip().rstrip().split(',')]
+		self.num_anchors  = len(self.anchors)/self.anchor_step
+		self.network_name = "yolo_v2"
 
 	def create_model(self):
 		models = nn.ModuleList()
@@ -128,12 +140,89 @@ class yolo_v2(nn.Module):
 		conv17.add_moduel('bn17',nn.BatchNorm2d(1024))
 		conv17.add_moduel('leaky17',nn.LeakyReLU(0.1,inplace=True))
 		models.append(conv17)
+		##################################
+		conv18 = nn.Sequential()
+		conv18.add_moduel('conv18',nn.Conv2d(1024,1024,3,1,1,bias=False))
+		conv18.add_moduel('bn18',nn.BatchNorm2d(1024))
+		conv18.add_moduel('leaky18',nn.LeakyReLU(0.1,inplace=True))
+		models.append(conv18)
+
+		conv19 = nn.Sequential()
+		conv19.add_moduel('conv19',nn.Conv2d(1024,1024,3,1,1,bias=False))
+		conv19.add_moduel('bn19',nn.BatchNorm2d(1024))
+		conv19.add_moduel('leaky19',nn.LeakyReLU(0.1,inplace=True))
+		models.append(conv19)
+
+		#route
+		models.append(EmptyModule())
+
+		conv20 = nn.Sequential()
+		conv20.add_moduel('conv20',nn.Conv2d(1024,1024,3,1,1,bias=False))
+		conv20.add_moduel('bn20',nn.BatchNorm2d(1024))
+		conv20.add_moduel('leaky20',nn.LeakyReLU(0.1,inplace=True))
+		models.append(conv20)
+		#reorg
+		models.append(yolo_v2_reorg(2))
+		#route
+		models.append(EmptyModule())
+		conv21 = nn.Sequential()
+		conv21.add_moduel('conv21',nn.Conv2d(1024,1024,3,1,1,bias=False))
+		conv21.add_moduel('bn21',nn.BatchNorm2d(1024))
+		conv21.add_moduel('leaky21',nn.LeakyReLU(0.1,inplace=True))
+		models.append(conv21)
+
+		conv22 = nn.Sequential()
+		conv22.add_moduel('conv22',nn.Conv2d(1024,125,1,1,1,bias=False))
+		conv22.add_moduel('linear',nn.LeakyReLU(0.1,inplace=True))
+		models.append(conv22)
+
 
 	def forward(self,x):
 		for block in blocks:
 
+	def load_conv(self,buf,start,conv_model):
+		num_w = conv_model.weight.numel()
+		num_b = conv_model.bias.numel()
+		conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w]))
+		start = start + num_w
+		conv_model.bias.data.copy_(torch.from_numpy(buf[start:start+num_b]))
+		start = start +num_b
+		return start
+
+	def load_conv_bn(self,buf,start,conv_model,bn_model):
+		num_w = conv_model.weight.numel()
+		num_b = bn_model.bias.numel()
+
+		bn_model.bias.data.copy_(torch.from_numpy(buf[start:start+num_b]))
+		start =start +num_b
+		bn_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_b]))
+		start =start +num_b
+		bn_model.running_mean.data.copy_(torch.from_numpy(buf[start:start+num_b]))
+		start =start +num_b
+		bn_model.running_var.data.copy_(torch.from_numpy(buf[start:start+num_b]))
+		start =start +num_b
+		conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w]))
+		start = start + num_w
+		return start
+
 
 	def load_weights(self,weight_file):
+		fp = open(weight_file,'rb')
+		major = np.fromfile(fp,count=1,dtype = np.int32)
+		minor = np.fromfile(fp,count=1,dtype = np.int32)
+		revision = np.fromfile(fp,coutn=1,dtype = np.int32)
+		print "weight file major {} minor {}".format(major,minor)
+		if (major[0]*10 + minor[0] )>=2:
+			print "using version 2"
+			seen = np.fromfile(fp,coutn=1,dtype = np.int64)
+		else:
+			print "using version 1"
+			seen = np.fromfile(fp,coutn=1,dtype = np.int32)
+		print "weight file revision {} seen {}".format(revision,seen)
+		header = np.asarray([major,minor,revision,seen],dtype= np.int32)
+		buf = np.fromfile(fp,dtype = np.float32)
+		starte = 0
+		for model in models:
 
 
 	def create_blocks(self):

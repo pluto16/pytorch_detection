@@ -120,14 +120,14 @@ def detect(namesfile, weightfile, imgfile):
 	finish = time.time()
 	boxes = model.get_region_boxes(output, conf_thresh,nms_thresh)[0]
 	boxes = nms(boxes, nms_thresh)
-    print("%s: Predicted in %f seconds." % (imgfile, finish-start))
+	print("{}: Predicted in {} seconds.".format(imgfile, (finish-start)))
 
 	class_names = load_class_names(namesfile)
 	plot_boxes(img,boxes, 'predictions.jpg',class_names)
 
 
 if __name__=='__main__':
-	if len(sys.argv) == 3:
+	if len(sys.argv) == 4:
 		namesfile  = sys.argv[1]
 		weightfile = sys.argv[2]
 		imgfile    = sys.argv[3]

@@ -122,7 +122,17 @@ def detect(namesfile, weightfile, imgfile):
 	output = output.data
 	finish = time.time()
 	boxes = model.get_region_boxes(output, conf_thresh,nms_thresh)[0]
+
+	print("before nms")
+	print(boxes)
+
+
 	boxes = nms(boxes, nms_thresh)
+	print("after nms")
+
+	print(boxes)
+    #print(boxes)
+
 	print("{}: Predicted in {} seconds.".format(imgfile, (finish-start)))
 
 	class_names = load_class_names(namesfile)
@@ -139,4 +149,3 @@ if __name__=='__main__':
 		print("Usage: ")
 		print("python detect.py namesfile weightfile imgfile")
 		print("Please use yolo-voc.weights")
-		

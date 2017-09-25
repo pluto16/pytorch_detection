@@ -242,7 +242,7 @@ class yolo_v2(nn.Module):
 
 		nnSoftmax = torch.nn.Softmax()
 
-		cls_confs = nnSoftmax(Variable(output[5:5+num_anchors].transpose(0,1))).data
+		cls_confs = nnSoftmax(Variable(output[5:5+num_classes].transpose(0,1))).data
 		cls_max_confs,cls_max_ids = torch.max(cls_confs,1)
 		cls_max_confs = cls_max_confs.view(-1)
 		cls_max_ids   = cls_max_ids.view(-1)
@@ -298,7 +298,6 @@ class yolo_v2(nn.Module):
 		start = start +num_b
 		conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w]).view(conv_model.weight.size()))
 		start = start + num_w
-
 		return start
 
 	def load_conv_bn(self,buf,start,conv_model,bn_model):

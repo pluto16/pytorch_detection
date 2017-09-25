@@ -60,7 +60,7 @@ def nms(boxes,nms_thresh):
 			out_boxes.append(box_i)
 			for j in range(i+1,len(boxes)):
 				box_j = boxes[sortIdx[j]]
-				if bbox_iou(box_i,box_j,x1y1x2y2=False) > nms_thresh
+				if bbox_iou(box_i,box_j,x1y1x2y2=False) > nms_thresh:
 					box_j[4] = 0
 	return out_boxes
 def plot_boxes(img,boxes,savename=None,class_names=None):
@@ -105,8 +105,6 @@ def detect(namesfile, weightfile, imgfile):
 	img = Image.open(imgfile).convert('RGB')
 	sied = img.resize((model.width,model.height))
 
-	
-
 	if isinstance(img,Image.Image):
 		img = torch.ByteTensor(torch.ByteStorage.from_buffer(img.tobytes()))
 		img = img.view(height, width, 3).transpose(0,1).transpose(0,2).contiguous()
@@ -122,7 +120,7 @@ def detect(namesfile, weightfile, imgfile):
 	finish = time.time()
 	boxes = model.get_region_boxes(output, conf_thresh,nms_thresh)[0]
 	boxes = nms(boxes, nms_thresh)
-    print('%s: Predicted in %f seconds.' % (imgfile, (finish-start)))
+    print("%s: Predicted in %f seconds." % (imgfile, finish-start))
 
 	class_names = load_class_names(namesfile)
 	plot_boxes(img,boxes, 'predictions.jpg',class_names)
@@ -130,9 +128,10 @@ def detect(namesfile, weightfile, imgfile):
 
 if __name__=='__main__':
 	if len(sys.argv) == 3:
-		weightfile = sys.argv[1]
-		imgfile    = sys.argv[2]
-		detect(weightfile,imgfile)
+		namesfile  = sys.argv[1]
+		weightfile = sys.argv[2]
+		imgfile    = sys.argv[3]
+		detect(namesfile,weightfile,imgfile)
 	else:
 		print("Usage: ")
 		print("python detect.py namesfile weightfile imgfile")

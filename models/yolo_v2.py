@@ -11,7 +11,7 @@ from easydict import EasyDict as edict
 class EmptyModule(nn.Module):
 	def __init__(self):
 		super(EmptyModule,self).__init__()
-	def forward(self,x)
+	def forward(self,x):
 		return x
 class yolo_v2_reorg(nn.Module):
 	def __init__(self,stride=2):
@@ -277,10 +277,10 @@ class yolo_v2(nn.Module):
 				input = outputs[ind-9]
 				x = model(input)
 			#route 
-			else if ind == 28:
-				input = torch.cat(outputs[ind-1],outputs[ind-4])
+			elif ind == 28:
+				input = torch.cat((outputs[ind-1],outputs[ind-4]),1)
 				x = model(input)
-			else
+			else:
 				x = model(x)
 				if id==16 or id==27 or id==24:
 					outputs[id]=x

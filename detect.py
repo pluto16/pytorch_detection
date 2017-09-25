@@ -85,7 +85,7 @@ def plot_boxes(img,boxes,savename=None,class_names=None):
 			print ('%12s: %8.5f %8.5f' %(class_names[cls_ind],cls_conf,thr))
 			rgb_anno = (255,0,0)
 			draw.text((x1,y1),class_names[cls_ind],fill=rgb_anno)
-		print("{} {} {} {} ".format(x1,y1,x2,y2))
+		#print("{} {} {} {} ".format(x1,y1,x2,y2))
 		draw.rectangle([x1,y1,x2,y2],outline=rgb)
 
 	if savename:
@@ -123,15 +123,13 @@ def detect(namesfile, weightfile, imgfile):
 	finish = time.time()
 	boxes = model.get_region_boxes(output, conf_thresh,nms_thresh)[0]
 
-	print("before nms")
-	print(boxes)
+	#print("before nms")
+	#print(boxes)
 
 
 	boxes = nms(boxes, nms_thresh)
-	print("after nms")
-
-	print(boxes)
-    #print(boxes)
+	#print("after nms")
+	#print(boxes)
 
 	print("{}: Predicted in {} seconds.".format(imgfile, (finish-start)))
 

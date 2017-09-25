@@ -4,6 +4,7 @@ from PIL import Image,ImageDraw
 from models.yolo_v2 import yolo_v2
 import torch
 from torch.autograd import Variable
+import time
 
 def load_class_names(namesfile):
 	class_names = []
@@ -13,6 +14,7 @@ def load_class_names(namesfile):
 		line = line.rstrip()
 		class_names.append(line)
 	return class_names
+
 def bbox_iou(box1,box2, x1y1x2y2=True):
 	if  x1y1x2y2:
 		mx= min(box1[0],box2[0])
@@ -73,7 +75,7 @@ def plot_boxes(img,boxes,savename=None,class_names=None):
 		x1 = (box[0] - box[2]/2.0)*width
 		y1 = (box[1] - box[3]/2.0)*height
 		x2 = (box[0] + box[2]/2.0)*width
-		y2 = (box[1] - box[3]/2.0)*height
+		y2 = (box[1] + box[3]/2.0)*height
 
 		rgb = (255,0,0)
 		if class_names:
@@ -81,12 +83,13 @@ def plot_boxes(img,boxes,savename=None,class_names=None):
 			cls_conf = box[5]
 			cls_ind  = box[6]
 			print ('%12s: %8.5f %8.5f' %(class_names[cls_ind],cls_conf,thr))
-			rgb = (255,0,0)
-			draw.text((x1,y1),class_names[cls_ind],fill=rgb)
-
+			rgb_anno = (255,0,0)
+			draw.text((x1,y1),class_names[cls_ind],fill=rgb_anno)
+		print("{} {} {} {} ".format(x1,y1,x2,y2))
 		draw.rectangle([x1,y1,x2,y2],outline=rgb)
+
 	if savename:
-		print("save plot results to %s",savename)
+		print("save plot results to {}".format(savename))
 		img.save(savename)
 
 
@@ -102,13 +105,13 @@ def detect(namesfile, weightfile, imgfile):
 		model.cuda()
 	model.eval()
 
-	img = Image.open(imgfile).convert('RGB')
-	sied = img.resize((model.width,model.height))
+	img_orig = Image.open(imgfile).convert('RGB')
+	siezd = img_orig.resize((model.width,model.height))
 
-	if isinstance(img,Image.Image):
-		img = torch.ByteTensor(torch.ByteStorage.from_buffer(img.tobytes()))
-		img = img.view(height, width, 3).transpose(0,1).transpose(0,2).contiguous()
-        img = img.view(1, 3, height, width)
+	if isinstance(siezd,Image.Image):
+		img = torch.ByteTensor(torch.ByteStorage.from_buffer(siezd.tobytes()))
+		img = img.view(model.height, model.width, 3).transpose(0,1).transpose(0,2).contiguous()
+        img = img.view(1, 3, model.height, model.width)
         img = img.float().div(255.0)
 	if torch.cuda.is_available():
 		img =img.cuda()
@@ -123,7 +126,7 @@ def detect(namesfile, weightfile, imgfile):
 	print("{}: Predicted in {} seconds.".format(imgfile, (finish-start)))
 
 	class_names = load_class_names(namesfile)
-	plot_boxes(img,boxes, 'predictions.jpg',class_names)
+	plot_boxes(siezd,boxes, 'predictions.jpg',class_names)
 
 
 if __name__=='__main__':
@@ -135,3 +138,5 @@ if __name__=='__main__':
 	else:
 		print("Usage: ")
 		print("python detect.py namesfile weightfile imgfile")
+		print("Please use yolo-voc.weights")
+		

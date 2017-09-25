@@ -40,20 +40,20 @@ class yolo_v2(nn.Module):
 		super(yolo_v2,self).__init__()
 		self.width    = 416
 		self.height   = 416
-		self.models   = self.create_model()
+		self.models,self.layerInd_has_no_weights   = self.create_model()
 		self.header   = torch.IntTensor([0,0,0,0])
 		self.seen     = 0
 		self.anchors_str  = "1.3221, 1.73145, 3.19275, 4.00944, 5.05587, 8.09892, 9.47112, 4.84053, 11.2364, 10.0071"
-		self.classes      = 20
+		self.num_classes      = 20
 		self.anchor_step  = 2
 		self.anchors      = [float(i) for i in self.anchors_str.lstrip().rstrip().split(',')]
 		self.num_anchors  = len(self.anchors)/self.anchor_step
 		self.network_name = "yolo_v2"
+		
 
-		self.layerInd_has_no_weigts = []
 	def create_model(self):
 		models = nn.ModuleList()
-
+		layerInd_has_no_weights = []
 		#32
 		conv0  = nn.Sequential()
 		conv0.add_module('conv0',nn.Conv2d(3,32,3,1,1,bias=False))
@@ -62,15 +62,16 @@ class yolo_v2(nn.Module):
 		models.append(conv0)
 		#max pool 0 ind=1
 		models.append(nn.MaxPool2d(2,2))
-		self.layerInd_has_no_weigts.append(1)
+		layerInd_has_no_weights.append(1)
 		#64
+		conv1  = nn.Sequential()
 		conv1.add_module('conv1',nn.Conv2d(32,64,3,1,1,bias=False))
 		conv1.add_module('bn1',nn.BatchNorm2d(64))
 		conv1.add_module('leaky1',nn.LeakyReLU(0.1,inplace=True))
 		models.append(conv1)
 		#max pool 1 ind=3
 		models.append(nn.MaxPool2d(2,2))
-		self.layerInd_has_no_weigts.append(3)
+		layerInd_has_no_weights.append(3)
         #128
 		conv2 = nn.Sequential()
 		conv2.add_module('conv2',nn.Conv2d(64,128,3,1,1,bias=False))
@@ -89,7 +90,7 @@ class yolo_v2(nn.Module):
 		models.append(conv4)
 		#max pool 2  ind =7
 		models.append(nn.MaxPool2d(2,2))
-		self.layerInd_has_no_weigts.append(7)
+		layerInd_has_no_weights.append(7)
 		#256
 		conv5 = nn.Sequential()
 		conv5.add_module('conv5',nn.Conv2d(128,256,3,1,1,bias=False))
@@ -108,7 +109,7 @@ class yolo_v2(nn.Module):
 		models.append(conv7)
 		#max pool 3 ind=11
 		models.append(nn.MaxPool2d(2,2))
-		self.layerInd_has_no_weigts.append(11)
+		layerInd_has_no_weights.append(11)
 		#512
 		conv8 = nn.Sequential()
 		conv8.add_module('conv8',nn.Conv2d(256,512,3,1,1,bias=False))
@@ -138,7 +139,7 @@ class yolo_v2(nn.Module):
 		models.append(conv12)
 		#max pool 4 ind=17
 		models.append(nn.MaxPool2d(2,2))
-		self.layerInd_has_no_weigts.append(17)
+		layerInd_has_no_weights.append(17)
 		#1024
 		conv13 = nn.Sequential()
 		conv13.add_module('conv13',nn.Conv2d(512,1024,3,1,1,bias=False))
@@ -181,7 +182,7 @@ class yolo_v2(nn.Module):
 
 		#route -9 id=25 
 		models.append(EmptyModule())
-		self.layerInd_has_no_weigts.append(25)
+		layerInd_has_no_weights.append(25)
 		#conv     id=26
 		conv20 = nn.Sequential()
 		conv20.add_module('conv20',nn.Conv2d(512,64,1,1,0,bias=False))
@@ -190,10 +191,10 @@ class yolo_v2(nn.Module):
 		models.append(conv20)
 		#reorg    id=27
 		models.append(yolo_v2_reorg(2))
-		self.layerInd_has_no_weigts.append(27)
+		layerInd_has_no_weights.append(27)
 		#route -1,-4 id=28
 		models.append(EmptyModule())
-		self.layerInd_has_no_weigts.append(28)
+		layerInd_has_no_weights.append(28)
 		
 
 		#conv id =29
@@ -207,7 +208,7 @@ class yolo_v2(nn.Module):
 		conv22.add_module('conv22',nn.Conv2d(1024,125,1,1,0))
 		models.append(conv22)
 
-		return models
+		return models,layerInd_has_no_weights
 
 
 	def get_region_boxes(self, output,conf_thresh,nms_thresh):
@@ -239,36 +240,39 @@ class yolo_v2(nn.Module):
 
 		def_confs = torch.sigmoid(output[4])
 
-		cls_confs = torch.nn.Softmax(Variable(output[5:5+num_anchors].transpose(0,1))).data
+		nnSoftmax = torch.nn.Softmax()
+
+		cls_confs = nnSoftmax(Variable(output[5:5+num_anchors].transpose(0,1))).data
 		cls_max_confs,cls_max_ids = torch.max(cls_confs,1)
 		cls_max_confs = cls_max_confs.view(-1)
 		cls_max_ids   = cls_max_ids.view(-1)
 
-		def_confs = convert2cpu(def_confs)
-		cls_max_confs = convert2cpu(cls_max_confs)
-		cls_max_ids   = convert2cpu_long(cls_max_ids)
-		cx = convert2cpu(cx)
-		cy = convert2cpu(cy)
-		ws = convert2cpu(ws)
-		hs = convert2cpu(hs)
+		def_confs = self.convert2cpu(def_confs)
+		cls_max_confs = self.convert2cpu(cls_max_confs)
+		cls_max_ids   = self.convert2cpu_long(cls_max_ids)
+		cx = self.convert2cpu(cx)
+		cy = self.convert2cpu(cy)
+		ws = self.convert2cpu(ws)
+		hs = self.convert2cpu(hs)
 
 		all_boxes = []
 		for b in range(batch):
 			boxes = []
-			for cy in range(h):
-				for cx in range(w):
+			for row in range(h):
+				for col in range(w):
 					for i in range(num_anchors):
-						ind = b*h*w*num_anchors + i*h*w + cy*w +cx
+						ind = b*h*w*num_anchors + i*h*w + row*w + col
 						conf  = def_confs[ind]*cls_max_confs[ind]
 						if conf >conf_thresh:
-							box = [cx[ind]/w,cy[ind]/h,ws[ind]/w,ws[ind]/h,conf,cls_max_confs[ind],cls_max_ids[ind]] 
+							bcx = cx[ind]
+							bcy = cy[ind]
+							bw  = ws[ind]
+							bh  = hs[ind] 
+							#print "bbox {} {} {} {}".format(bcx,bcy,bw,bh)
+							box = [bcx/w,bcy/h,bw/w,bh/h,conf,cls_max_confs[ind],cls_max_ids[ind]] 
 							boxes.append(box)
 		all_boxes.append(boxes)
-
-
-
-
-
+		return all_boxes
 
 	def forward(self,x):
 		outputs = dict()
@@ -283,8 +287,8 @@ class yolo_v2(nn.Module):
 				x = model(input)
 			else:
 				x = model(x)
-				if id==16 or id==27 or id==24:
-					outputs[id]=x
+				if ind==16 or ind==27 or ind==24:
+					outputs[ind]=x
 		return x
 
 	def load_conv(self,buf,start,conv_model):
@@ -305,9 +309,11 @@ class yolo_v2(nn.Module):
 		start =start +num_b
 		bn_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_b]))
 		start =start +num_b
-		bn_model.running_mean.data.copy_(torch.from_numpy(buf[start:start+num_b]))
+		#cannot call .data on a torch.Tensor
+		bn_model.running_mean.copy_(torch.from_numpy(buf[start:start+num_b]))
 		start =start +num_b
-		bn_model.running_var.data.copy_(torch.from_numpy(buf[start:start+num_b]))
+		#cannot call .data on a torch.Tensor
+		bn_model.running_var.copy_(torch.from_numpy(buf[start:start+num_b]))
 		start =start +num_b
 		conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w]).view(conv_model.weight.size()))
 		start = start + num_w
@@ -318,25 +324,28 @@ class yolo_v2(nn.Module):
 		fp = open(weight_file,'rb')
 		major = np.fromfile(fp,count=1,dtype = np.int32)
 		minor = np.fromfile(fp,count=1,dtype = np.int32)
-		revision = np.fromfile(fp,coutn=1,dtype = np.int32)
+		revision = np.fromfile(fp,count=1,dtype = np.int32)
 		print "weight file major {} minor {}".format(major,minor)
 		if (major[0]*10 + minor[0] )>=2:
 			print "using version 2"
-			seen = np.fromfile(fp,coutn=1,dtype = np.int64)
+			seen = np.fromfile(fp,count=1,dtype = np.int64)
 		else:
 			print "using version 1"
-			seen = np.fromfile(fp,coutn=1,dtype = np.int32)
+			seen = np.fromfile(fp,count=1,dtype = np.int32)
 		print "weight file revision {} seen {}".format(revision,seen)
 		header = np.asarray([major,minor,revision,seen],dtype= np.int32)
 		buf = np.fromfile(fp,dtype = np.float32)
 		fp.close()
-		starte = 0
+		start = 0
+		#print self.models
 		for ind,model in enumerate(self.models):
-			if ind not in self.layerInd_has_no_weigts:
-				if ind ==30:
-					start = load_conv_bn(buf, start, model[0], model[1])	
+			if ind not in self.layerInd_has_no_weights:
+				if ind !=30:
+					#print model[0]
+					#print model[1]
+					start = self.load_conv_bn(buf, start, model[0], model[1])	
 				else:
-					start = load_conv(buf,start,model[0])
+					start = self.load_conv(buf,start,model[0])
 
 	def convert2cpu(self,gpu_matrix):
 		return torch.FloatTensor(gpu_matrix.size()).copy_(gpu_matrix)

@@ -359,6 +359,7 @@ class yolo_v2(nn.Module):
 		else:
 			conv_model.bias.data.numpy().tofile(fp)
 			conv_model.weight.data.numpy().tofile(fp)
+			
 	def save_conv_bn(self,fp,conv_model,bn_model):
 		if bn_model.bias.is_cuda:
 			convert2cpu(bn_model.bias.data).numpy().tofile(fp)

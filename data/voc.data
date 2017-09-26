@@ -1,0 +1,5 @@
+train  = ../pytorch-yolo2/dataSet/voc_train.txt
+valid  = ../pytorch-yolo2/dataSet/2007_test.txt
+names = ./data/voc.names
+backup = backup
+gpus  = 0

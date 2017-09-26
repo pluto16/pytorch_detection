@@ -211,7 +211,7 @@ class yolo_v2(nn.Module):
 		return models,layerInd_has_no_weights
 
 
-	def get_region_boxes(self, output,conf_thresh,nms_thresh):
+	def get_region_boxes(self, output,conf_thresh):
 		anchor_step = self.anchor_step
 		num_classes = self.num_classes
 		num_anchors = self.num_anchors
@@ -327,12 +327,11 @@ class yolo_v2(nn.Module):
 		print "weight file major {} minor {}".format(major,minor)
 		if (major[0]*10 + minor[0] )>=2:
 			print "using version 2"
-			seen = np.fromfile(fp,count=1,dtype = np.int64)
+			self.seen = np.fromfile(fp,count=1,dtype = np.int64)
 		else:
 			print "using version 1"
-			seen = np.fromfile(fp,count=1,dtype = np.int32)
-		print "weight file revision {} seen {}".format(revision,seen)
-		header = np.asarray([major,minor,revision,seen],dtype= np.int32)
+			self.seen = np.fromfile(fp,count=1,dtype = np.int32)
+		print "weight file revision {} seen {}".format(revision,self.seen)
 		buf = np.fromfile(fp,dtype = np.float32)
 		fp.close()
 		start = 0
@@ -345,6 +344,21 @@ class yolo_v2(nn.Module):
 					start = self.load_conv_bn(buf, start, model[0], model[1])	
 				else:
 					start = self.load_conv(buf,start,model[0])
+	def save_weights(self,weight_file):
+		fp = open(weight_file,'wb')
+		header = np.asarray([0,0,0,self.seen],dtype=np.int32)
+		header.tofile(fp)
+
+		#save weights
+		for ind,model in enumerate(self.models):
+			if ind not in self.layerInd_has_no_weights:
+				if ind !=30:
+					self.save_conv_bn(fp,model[0],model[1])
+				else:
+					self.save_conv(fp,model[0])
+
+
+
 
 	def convert2cpu(self,gpu_matrix):
 		return torch.FloatTensor(gpu_matrix.size()).copy_(gpu_matrix)
@@ -359,19 +373,19 @@ class yolo_v2(nn.Module):
 		else:
 			conv_model.bias.data.numpy().tofile(fp)
 			conv_model.weight.data.numpy().tofile(fp)
-			
+
 	def save_conv_bn(self,fp,conv_model,bn_model):
 		if bn_model.bias.is_cuda:
 			convert2cpu(bn_model.bias.data).numpy().tofile(fp)
 			convert2cpu(bn_model.weight.data).numpy().tofile(fp)
-			convert2cpu(bn_model.running_mean.data).numpy().tofile(fp)
-			convert2cpu(bn_model.running_var.data).numpy().tofile(fp)
+			convert2cpu(bn_model.running_mean).numpy().tofile(fp)
+			convert2cpu(bn_model.running_var).numpy().tofile(fp)
 			convert2cpu(conv_model.weight.data).numpy().tofile(fp)		
 		else:
 			bn_model.bias.data.numpy().tofile(fp)
 			bn_model.weight.data.numpy().tofile(fp)
-			bn_model.running_mean.data.numpy().tofile(fp)
-			bn_model.running_var.data.numpy().tofile(fp)
+			bn_model.running_mean.numpy().tofile(fp)
+			bn_model.running_var.numpy().tofile(fp)
 			conv_model.weight.data.numpy().tofile(fp)		
 
 

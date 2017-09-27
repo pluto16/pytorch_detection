@@ -28,7 +28,7 @@ def plot_boxes(img,boxes,savename=None,class_names=None):
 			cls_conf = box[5]
 			cls_ind  = box[6]
 			print ('%12s: %8.5f %8.5f' %(class_names[cls_ind],cls_conf,thr))
-			rgb_anno = (255,0,0)
+			rgb_anno = (0,0,255)
 			draw.text((x1,y1),class_names[cls_ind],fill=rgb_anno)
 		#print("{} {} {} {} ".format(x1,y1,x2,y2))
 		draw.rectangle([x1,y1,x2,y2],outline=rgb)

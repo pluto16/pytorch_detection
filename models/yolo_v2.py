@@ -271,7 +271,7 @@ class yolo_v2(nn.Module):
 							#print "bbox {} {} {} {}".format(bcx,bcy,bw,bh)
 							box = [bcx/w,bcy/h,bw/w,bh/h,conf,cls_max_confs[ind],cls_max_ids[ind]] 
 							boxes.append(box)
-		all_boxes.append(boxes)
+			all_boxes.append(boxes)
 		return all_boxes
 
 	def forward(self,x):

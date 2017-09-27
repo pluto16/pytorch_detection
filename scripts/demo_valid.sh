@@ -1,0 +1,1 @@
+python valid.py data/voc.data weights/yolo-voc.weights

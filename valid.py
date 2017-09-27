@@ -13,7 +13,7 @@ from dataset_factory.VOCDataset import VOCDataset
 from utils.nms import nms 
 
 
-
+import time
 
 def valid(datacfg,weight_file,outfile):
 
@@ -31,6 +31,9 @@ def valid(datacfg,weight_file,outfile):
 
     model = yolo_v2()
     model.load_weights(weight_file)
+
+
+    print("weights %s loaded"%(weight_file))
     if torch.cuda.is_available():
         model.cuda()
     model.eval()
@@ -39,8 +42,12 @@ def valid(datacfg,weight_file,outfile):
     fps = [0]*model.num_classes
     if not os.path.exists('results'):
         os.mkdir('results')
+    dir_name = 'results/%s_%s_%s' %(namesfile.split('/')[-1].split('.')[0],weight_file.split('/')[-1].split('.')[0],time.strftime("%Y%m%d_%H%M%S",time.localtime()))
+    print 'save results to %s'%(dir_name)
+    if not os.path.exists(dir_name):
+        os.mkdir(dir_name)
     for i in range(model.num_classes):
-        buf ="%s/%s_%s.txt" % ('results',outfile,class_names[i])
+        buf ="%s/%s_%s.txt" % (dir_name,outfile,class_names[i])
         fps[i] = open(buf,'w')
     
     #construct datalist 
@@ -61,12 +68,12 @@ def valid(datacfg,weight_file,outfile):
 
             LineId = LineId +1
             image_name = image_files[LineId]
-            print "%d file:%s "%(LineId,image_name)
+            print "[Batch_index:%d] [%d/%d] file:%s "%(batch_index,LineId+1,len(image_files),image_name)
 
-            size = Image.open(image_name)
-            height,width =size[0],size[1] 
-            print "   height %d, width %d"%(height,width)
-            print "   bbox num %d" % (len(boxes))
+            img_orig = Image.open(image_name)
+            #print img_orig
+            height,width =img_orig.height,img_orig.width
+            print "   height %d, width %d, bbox num %d" % (height,width,len(boxes))
             for box in boxes:
                 x1 = (box[0] - box[2]/2.0)*width
                 y1 = (box[1] - box[3]/2.0)*height
@@ -74,23 +81,19 @@ def valid(datacfg,weight_file,outfile):
                 y2 = (box[1] + box[3]/2.0)*height
                 det_conf = box[4]
                 cls_id   = box[6]
-                fps[cls_id].write("%s %f %f %f %f %f\n",image_name,det_conf,x1,y1,x2,y2)
+                fps[cls_id].write("%s %f %f %f %f %f\n"%(image_name,det_conf,x1,y1,x2,y2))
 
     for i in range(model.num_classes):
         fps[i].close()
 
     pass
-    #get average precision
-
-
-
-
+    #get average precision using voc standard
 
 if __name__=="__main__":
     if len(sys.argv) == 3:
         datacfg = sys.argv[1]
         weightfile = sys.argv[2]
-        outfile = 'comp4_det_test_'
+        outfile = 'comp4_det_test'
         valid(datacfg,weightfile,outfile)
     else:
         print("Usage:")

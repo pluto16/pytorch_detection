@@ -17,27 +17,27 @@ This repository tries to achieve the following goals
 
 **NOTE:**
 This is still an experimental project. Model trained on VOC0712 train+val
-VOC07 test mAP is 0.5630 .@20171019
-        AP for aeroplane       = 0.6112
-        AP for bicycle         = 0.6072
-        AP for bird            = 0.5375
-        AP for boat            = 0.4433
-        AP for bottle          = 0.3031
-        AP for bus             = 0.6043
-        AP for car             = 0.6910
-        AP for cat             = 0.6765
-        AP for chair           = 0.3610
-        AP for cow             = 0.5653
-        AP for diningtable     = 0.5538
-        AP for dog             = 0.6461
-        AP for horse           = 0.6997
-        AP for motorbike       = 0.6625
-        AP for person          = 0.6411
-        AP for pottedplant     = 0.3036
-        AP for sheep           = 0.5476
-        AP for sofa            = 0.5416
-        AP for train           = 0.6940
-        AP for tvmonitor       = 0.5701
+VOC07 test mAP is 0.5630 .@20171019 <br>
+        AP for aeroplane       = 0.6112<br>
+        AP for bicycle         = 0.6072<br>
+        AP for bird            = 0.5375<br>
+        AP for boat            = 0.4433<br>
+        AP for bottle          = 0.3031<br>
+        AP for bus             = 0.6043<br>
+        AP for car             = 0.6910<br>
+        AP for cat             = 0.6765<br>
+        AP for chair           = 0.3610<br>
+        AP for cow             = 0.5653<br>
+        AP for diningtable     = 0.5538<br>
+        AP for dog             = 0.6461<br>
+        AP for horse           = 0.6997<br>
+        AP for motorbike       = 0.6625<br>
+        AP for person          = 0.6411<br>
+        AP for pottedplant     = 0.3036<br>
+        AP for sheep           = 0.5476<br>
+        AP for sofa            = 0.5416<br>
+        AP for train           = 0.6940<br>
+        AP for tvmonitor       = 0.5701<br>
 
 ### Detection Using a Pretrained Model
 ```

@@ -24,10 +24,11 @@ def plot_boxes(img,boxes,savename=None,class_names=None):
 
 		rgb = (255,0,0)
 		if class_names:
-			thr      = box[4]
+			det_conf = box[4]
 			cls_conf = box[5]
 			cls_ind  = box[6]
-			print ('%12s: %8.5f %8.5f' %(class_names[cls_ind],cls_conf,thr))
+			thr      = det_conf*cls_conf
+			print ('%12s:cls_conf=%8.5f det_conf=%8.5f thr=%8.5f' %(class_names[cls_ind],cls_conf,det_conf,thr))
 			rgb_anno = (0,0,255)
 			draw.text((x1,y1),class_names[cls_ind],fill=rgb_anno)
 		#print("{} {} {} {} ".format(x1,y1,x2,y2))

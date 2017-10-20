@@ -42,7 +42,7 @@ if __name__=="__main__":
     if len(sys.argv) == 3:
         datacfg = sys.argv[1]
         weightfile = sys.argv[2]
-        outdir = 'backup'
+        backupdir = 'backup'
 
         #training settings
         data_options  = read_data_cfg(datacfg)
@@ -68,8 +68,8 @@ if __name__=="__main__":
         nms_thresh  = 0.45
         iou_thresh  = 0.5
 
-        if not os.path.exists(outdir):
-            os.mkdir(outdir)
+        if not os.path.exists(backupdir):
+            os.mkdir(backupdir)
 
         # construct model 
         model = yolo_v2()
@@ -105,35 +105,35 @@ if __name__=="__main__":
 
         for epoch in range(init_epoch, max_epochs): 
             #train process
-            # train_dataset = VOCDataset(train_image_files,shape=(model.width,model.height),shuffle=True,train_phase=True,transform=transforms.Compose([transforms.ToTensor(),]))
-            # train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size, shuffle=False,num_workers=batch_size,pin_memory=True)
-            # logging('training with %d samples' % (len(train_loader.dataset)))
+            train_dataset = VOCDataset(train_image_files,shape=(model.width,model.height),shuffle=True,train_phase=True,transform=transforms.Compose([transforms.ToTensor(),]))
+            train_loader = torch.utils.data.DataLoader(train_dataset,batch_size=batch_size, shuffle=False,num_workers=batch_size,pin_memory=True)
+            #logging('training with %d samples' % (len(train_loader.dataset)))
 
-            # model.train()
-            # for batch_idx, (data, target) in enumerate(train_loader):
-            #     learning_rate = adjust_learning_rate(optimizer,learning_rate,processed_batches,steps,scales)
+            model.train()
+            for batch_idx, (data, target) in enumerate(train_loader):
+                learning_rate = adjust_learning_rate(optimizer,learning_rate,processed_batches,steps,scales)
                 
-            #     #logging('epoch %d,all_batches %d, batch_size %d, lr %f' % (epoch+1,processed_batches+1,batch_size, learning_rate))
+                #logging('epoch %d,all_batches %d, batch_size %d, lr %f' % (epoch+1,processed_batches+1,batch_size, learning_rate))
 
-            #     if torch.cuda.is_available():
-            #         data = data.cuda()
-            #     data, target = Variable(data), Variable(target)
-            #     optimizer.zero_grad()
-            #     output = model(data)
-            #     seen_samples = seen_samples + data.data.size(0)
-            #     loss_func.seen  = seen_samples
-            #     loss_func.epoch = epoch
-            #     loss_func.seenbatches = processed_batches
-            #     loss = loss_func(output, target)
+                if torch.cuda.is_available():
+                    data = data.cuda()
+                data, target = Variable(data), Variable(target)
+                optimizer.zero_grad()
+                output = model(data)
+                seen_samples = seen_samples + data.data.size(0)
+                loss_func.seen  = seen_samples
+                loss_func.epoch = epoch
+                loss_func.seenbatches = processed_batches
+                loss = loss_func(output, target)
                 
-            #     loss.backward()
-            #     optimizer.step()
-            #     processed_batches = processed_batches + 1
+                loss.backward()
+                optimizer.step()
+                processed_batches = processed_batches + 1
 
-            # if (epoch+1) % save_interval == 0:
-            #     logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
-            #     model.seen = (epoch + 1) * len(train_loader.dataset)
-            #     model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
+            if (epoch+1) % save_interval == 0:
+                logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
+                model.seen = (epoch + 1) * len(train_loader.dataset)
+                model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
 
             #valid process 
             total       = 0.0

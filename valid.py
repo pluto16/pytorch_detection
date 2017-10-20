@@ -81,8 +81,9 @@ def valid(datacfg,weight_file,outfile_prefix):
                 x2 = (box[0] + box[2]/2.0)*width
                 y2 = (box[1] + box[3]/2.0)*height
                 det_conf = box[4]
+                cls_conf = box[5]
                 cls_id   = box[6]
-                fps[cls_id].write("%s %f %f %f %f %f\n"%(image_name,det_conf,x1,y1,x2,y2))
+                fps[cls_id].write("%s %f %f %f %f %f\n"%(image_name,det_conf*cls_conf,x1,y1,x2,y2))
 
     for i in range(model.num_classes):
         fps[i].close()

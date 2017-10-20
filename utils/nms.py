@@ -6,7 +6,7 @@ def nms(boxes,nms_thresh):
 		return boxes
 	def_confs = torch.zeros(len(boxes))
 	for i in range(len(boxes)):
-		def_confs[i] = 1- boxes[i][4]
+		def_confs[i] = 1- boxes[i][4]*boxes[i][5]
 
 	_,sortIdx = torch.sort(def_confs)
 	out_boxes = []

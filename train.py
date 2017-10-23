@@ -19,6 +19,8 @@ import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torchvision import transforms
 
+from utils.logger import Logger
+
 def file_lines(filepath):
     with open(filepath) as lines:
         return sum(1 for line in lines)
@@ -33,14 +35,14 @@ if __name__=="__main__":
         backupdir = 'backup'
 
         #training settings
-        data_options  = read_data_cfg(datacfg)
+        data_options       = read_data_cfg(datacfg)
         train_set_file     = data_options['train']
-        train_samples       = file_lines(train_set_file)
-        valid_set_file      = data_options['valid']
+        train_samples      = file_lines(train_set_file)
+        valid_set_file     = data_options['valid']
         
         #training parameters
-        max_batches = 80200
-        batch_size  = 64
+        max_batches = 45000
+        batch_size  = 40
         init_epoch    = 0
         max_epochs    = 100
         learning_rate = 0.0001
@@ -48,12 +50,27 @@ if __name__=="__main__":
         decay         = 0.0005
         seen_samples  = 0
         processed_batches = 0
-        save_interval = 1
+        save_interval = 10
+        steps         = [int(i) for i in "0,100,25000,35000".split(",") ]
+        scales        = [float(i) for i in "0.1,10,0.1,0.1".split(",")]
+# learning_rate=0.0001
+# max_batches = 45000
+# policy=steps
+# steps=100,25000,35000
+# scales=10,.1,.1
+
         #test parameters
         conf_thresh = 0.25
         nms_thresh  = 0.45
         iou_thresh  = 0.5
+        ngpus       = 2 
 
+        #logger for tensorboard
+        log_dir = "./logs/log_%s" %(time.strftime("%Y%m%d_%H%M%S", time.localtime()))
+        if not os.path.exists(log_dir):
+            os.mkdir(log_dir)
+        tf_logger = Logger(log_dir)
+        
         if not os.path.exists(backupdir):
             os.mkdir(backupdir)
 
@@ -66,10 +83,22 @@ if __name__=="__main__":
             #os.environ['CUDA_VISIBLE_DEVICES']='0'
             torch.cuda.manual_seed(int(time.time()))
             old_model.cuda()
-            model = nn.DataParallel(old_model,device_ids=[0,2])
+            model = old_model
+            if ngpus >1:
+                model = nn.DataParallel(model,device_ids=[0,2])
 
-        optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum, dampening=0, weight_decay=decay)
-        scheduler = lr_scheduler.StepLR(optimizer,step_size = 30 ,gamma=0.1)
+            
+        optimizer = optim.SGD(model.parameters(), lr=learning_rate/batch_size, momentum=momentum, dampening=0, weight_decay=decay*batch_size)
+        #scheduler = lr_scheduler.StepLR(optimizer,step_size = 30 ,gamma=0.1)
+        def adjust_learning_rate(optimizer,batchid,learning_rate,batch_size):
+            for i in range(len(steps)):
+                if batchid == steps[i]:
+                    learning_rate = learning_rate*scales[i]
+            for param_group  in optimizer.param_groups:
+                param_group['lr'] = learning_rate/batch_size
+            return learning_rate
+
+            
         #load train image set
         with open(train_set_file,'r') as fp:
             train_image_files = fp.readlines()
@@ -96,7 +125,7 @@ if __name__=="__main__":
         #logging('training with %d samples' % (len(train_loader.dataset)))
         #
         valid_dataset = VOCDataset(valid_image_files,shape=(old_model.width,old_model.height),shuffle=False,transform=img_trans)
-        valid_loader  = torch.utils.data.DataLoader(valid_dataset,batch_size=4,shuffle=False,num_workers=4,pin_memory=True)
+        valid_loader  = torch.utils.data.DataLoader(valid_dataset,batch_size=batch_size,shuffle=False,num_workers=batch_size,pin_memory=True)
 
         def truths_length(truths):
             for i in range(50):
@@ -104,22 +133,29 @@ if __name__=="__main__":
                     return i
         
         loss_func = yolo_v2_loss(old_model.num_classes,old_model.anchors_str,old_model.anchor_step)
+        loss_func.tf_logger = tf_logger
         for epoch in range(init_epoch, max_epochs): 
             if 1:
                 model.train()
-                for batch_idx, (data, target) in enumerate(train_loader):
-                    scheduler.step()
+                for batch_idx, (images, target) in enumerate(train_loader):
+                    if processed_batches in steps:
+                        
+                        learning_rate = adjust_learning_rate(optimizer,processed_batches,learning_rate,batch_size)
+                        print "learning rate changed to {}".format(learning_rate)
+                    #scheduler.step()
                     #logging('epoch %d,all_batches %d, batch_size %d, lr %f' % (epoch+1,processed_batches+1,batch_size, learning_rate))
                     if torch.cuda.is_available():
-                        data = data.cuda()
-                    data, target = Variable(data), Variable(target)
+                        images = images.cuda()
+                    images_var = Variable(images)
+                    target_var = Variable(target)
                     optimizer.zero_grad()
-                    output = model(data)
-                    seen_samples = seen_samples + data.data.size(0)
+                    output = model(images_var)
+                    seen_samples = seen_samples + images_var.data.size(0)
                     loss_func.seen  = seen_samples
                     loss_func.epoch = epoch
+                    loss_func.lr           = learning_rate
                     loss_func.seenbatches = processed_batches
-                    loss = loss_func(output, target)
+                    loss = loss_func(output, target_var)
                     
                     loss.backward()
                     optimizer.step()
@@ -132,8 +168,8 @@ if __name__=="__main__":
                     elif old_model.network_name == 'yolo_v2_resnet':
                         extension = 'pth'
                     logging('save weights to %s/%06d.%s' % (backupdir, epoch+1,extension))
-                    old_model.seen = (epoch + 1) * len(train_loader.dataset)
-                    model.save_weights('%s/%06d.%s' % (backupdir, epoch+1,extension))
+                    model.module.seen = (epoch + 1) * len(train_loader.dataset)
+                    model.module.save_weights('%s/%06d.%s' % (backupdir, epoch+1,extension))
 
             #valid process 
             total       = 0.0
@@ -160,13 +196,14 @@ if __name__=="__main__":
                         box_gt   = [truths[i][1], truths[i][2], truths[i][3], truths[i][4], 1.0, 1.0, truths[i][0]]
                         for j in range(len(boxes)):
                             iou = bbox_iou(box_gt, boxes[j], x1y1x2y2=False)
-                        #print "best_iou {}  len(boxes) {} ".format(best_iou, len(boxes))
                             if iou > iou_thresh and boxes[j][6] == box_gt[6]:
                                 correct = correct+1
             precision = 1.0*correct/(proposals+eps)
             recall = 1.0*correct/(total+eps)
             fscore = 2.0*precision*recall/(precision+recall+eps)
             logging("valid process precision: %f, recall: %f, fscore: %f" % (precision, recall, fscore))
+            tf_logger.scalar_summary("valid precision",precision,epoch)
+            tf_logger.scalar_summary("valid recall",recall,epoch)
     else:
         print("Usage:")
         print("python train.py datacfg weightfile")

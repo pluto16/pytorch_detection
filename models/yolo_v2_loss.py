@@ -6,6 +6,7 @@ import numpy as np
 import sys
 sys.path.insert(0, "..")
 from utils.iou import bbox_iou
+
 import math
 
 class yolo_v2_loss(nn.Module):
@@ -23,8 +24,10 @@ class yolo_v2_loss(nn.Module):
 		self.coord_scale = 1
 		self.seen        = 0
 		self.epoch       = 0
+		self.lr          = 0
 		self.seenbatches = 0
 		self.thresh      = 0.6
+		self.tf_logger   = None
 		self.mse_loss = nn.MSELoss(size_average=False)
 
 	def convert2cpu(self,gpu_matrix):
@@ -42,31 +45,32 @@ class yolo_v2_loss(nn.Module):
 		nPixels  = nH*nW
 
 		output   = output.view(nB, nA, (5+nC), nH, nW)
-
+		
 		tx_pred    = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([0]))).view(nB, nA, nH, nW))
 		ty_pred    = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([1]))).view(nB, nA, nH, nW))
 		tw_pred    = output.index_select(2, Variable(torch.cuda.LongTensor([2]))).view(nB, nA, nH, nW)
 		th_pred    = output.index_select(2, Variable(torch.cuda.LongTensor([3]))).view(nB, nA, nH, nW)
 
 		conf_pred  = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([4]))).view(nB, nA, nH, nW))
-
+		conf_pred_cpu = self.convert2cpu(conf_pred.data)
+		
 		cls_preds  = output.index_select(2, Variable(torch.linspace(5,5+nC-1,nC).long().cuda()))
 		cls_preds  = cls_preds.view(nB*nA, nC, nH*nW).transpose(1,2).contiguous().view(nB*nA*nH*nW, nC)
 
 		#generate pred_bboxes
-		pred_boxes = torch.FloatTensor(4, nB*nA*nH*nW)
-		grid_x = torch.linspace(0, nW-1, nW).repeat(nH,1).repeat(nB*nA, 1, 1).view(nB*nA*nH*nW)
-		grid_y = torch.linspace(0, nH-1, nH).repeat(nW,1).t().repeat(nB*nA, 1, 1).view(nB*nA*nH*nW)
-		anchor_w = torch.Tensor(self.anchors).view(nA, self.anchor_step).index_select(1, torch.LongTensor([0]))
-		anchor_h = torch.Tensor(self.anchors).view(nA, self.anchor_step).index_select(1, torch.LongTensor([1]))
+		pred_boxes = torch.cuda.FloatTensor(4, nB*nA*nH*nW)
+		grid_x = torch.linspace(0, nW-1, nW).repeat(nH,1).repeat(nB*nA, 1, 1).view(nB*nA*nH*nW).cuda()
+		grid_y = torch.linspace(0, nH-1, nH).repeat(nW,1).t().repeat(nB*nA, 1, 1).view(nB*nA*nH*nW).cuda()
+		anchor_w = torch.Tensor(self.anchors).view(nA, self.anchor_step).index_select(1, torch.LongTensor([0])).cuda()
+		anchor_h = torch.Tensor(self.anchors).view(nA, self.anchor_step).index_select(1, torch.LongTensor([1])).cuda()
 		anchor_w = anchor_w.repeat(nB, 1).repeat(1, 1, nH*nW).view(nB*nA*nH*nW)
 		anchor_h = anchor_h.repeat(nB, 1).repeat(1, 1, nH*nW).view(nB*nA*nH*nW)
-		pred_boxes[0] = tx_pred.cpu().data.view(nB*nA*nH*nW) + grid_x
-		pred_boxes[1] = ty_pred.cpu().data.view(nB*nA*nH*nW) + grid_y
-		pred_boxes[2] = torch.exp(tw_pred.cpu().data.view(nB*nA*nH*nW)) * anchor_w
-		pred_boxes[3] = torch.exp(th_pred.cpu().data.view(nB*nA*nH*nW)) * anchor_h
+		pred_boxes[0] = tx_pred.data.view(nB*nA*nH*nW) + grid_x
+		pred_boxes[1] = ty_pred.data.view(nB*nA*nH*nW) + grid_y
+		pred_boxes[2] = torch.exp(tw_pred.data.view(nB*nA*nH*nW)) * anchor_w
+		pred_boxes[3] = torch.exp(th_pred.data.view(nB*nA*nH*nW)) * anchor_h
 		pred_boxes = pred_boxes.transpose(0,1).contiguous().view(-1,4)
-
+		pred_boxes_cpu = self.convert2cpu(pred_boxes)
 		
 		tx_target         	= torch.zeros(nB, nA, nH, nW) 
 		ty_target         	= torch.zeros(nB, nA, nH, nW) 
@@ -75,8 +79,7 @@ class yolo_v2_loss(nn.Module):
 		coord_mask 			= torch.zeros(nB, nA, nH, nW)
 
 		tconf_target      	= torch.zeros(nB, nA, nH, nW)
-		conf_mask  			= torch.ones(nB, nA, nH, nW) * self.noobject_scale
-
+		conf_mask           = torch.ones(nB, nA, nH, nW)*self.noobject_scale
 		tcls_target       	= torch.zeros(nB, nA, nH, nW) 
 		cls_mask   			= torch.zeros(nB, nA, nH, nW)
 
@@ -85,7 +88,7 @@ class yolo_v2_loss(nn.Module):
 			for j in xrange(nH):
 				for i in xrange(nW):
 					for n in xrange(nA):
-						cur_pred_box = pred_boxes[b*nAnchors+n*nPixels+j*nW+i]
+						cur_pred_box = pred_boxes_cpu[b*nAnchors+n*nPixels+j*nW+i]
 						best_iou = 0
 						for t in xrange(50):
 							if target[b][t*5+1] == 0:
@@ -95,14 +98,13 @@ class yolo_v2_loss(nn.Module):
 							gw = target[b][t*5+3]*nW
 							gh = target[b][t*5+4]*nH
 							cur_gt_box = np.array([gx,gy,gw,gh])
-							#print "cur_pred_boxes.size ",cur_pred_boxes.size()
-							#print "cur_gt_boxes.size",cur_gt_boxes.size()
 							iou = bbox_iou(cur_pred_box.numpy(), cur_gt_box, x1y1x2y2=False)
 							if iou > best_iou:
 								best_iou = iou
+
 						if best_iou > self.thresh:
 							conf_mask[b][n][j][i] = 0
-						#avg_anyobj += conf_pred.cpu().data[b][n][j][i]
+						#avg_anyobj += conf_pred_cpu.data[b][n][j][i]
 
 		if self.seen < 12800:
 			tx_target.fill_(0.5)
@@ -141,7 +143,7 @@ class yolo_v2_loss(nn.Module):
 						best_n = n
 
 				gt_box = [gx, gy, gw, gh]
-				pred_box = pred_boxes[b*nAnchors+best_n*nPixels+gj*nW+gi]
+				pred_box = pred_boxes_cpu[b*nAnchors+best_n*nPixels+gj*nW+gi]
 				#print "pred_box",pred_box
 
 				tx_target[b][best_n][gj][gi] = target[b][t*5+1] * nW - gi
@@ -162,7 +164,7 @@ class yolo_v2_loss(nn.Module):
 					nCorrect = nCorrect + 1
 				avg_iou += iou
 				ncount +=1
-				avg_obj += conf_pred.cpu().data[b][best_n][gj][gi]
+				avg_obj += conf_pred_cpu[b][best_n][gj][gi]
 
 		
 		coord_mask_gpu = Variable(coord_mask.cuda())
@@ -187,8 +189,23 @@ class yolo_v2_loss(nn.Module):
 		loss_cls = self.class_scale * nn.CrossEntropyLoss(size_average=False)(cls_preds, tcls_target_gpu)
 		loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
 
-		nProposals = int((conf_pred > 0.25).sum().data[0])
-		print 'epoch: %d, seen: %d, nProposal %d, GtAvgIOU: %f, AvgObj: %f, AvgRecall: %f, count: %d'%(self.epoch,self.seen,nProposals,avg_iou/ncount,avg_obj/ncount,nCorrect*1.0/ncount,ncount)
-		print('     loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss.data[0]))
-		
+		nProposals = int((conf_pred_cpu > 0.25).sum())
+		print 'epoch: %d,seenB: %d,seenS: %d, nProposal %d, GtAvgIOU: %f, AvgObj: %f, AvgRecall: %f, count: %d'%(self.epoch,self.seenbatches,self.seen,nProposals,avg_iou/ncount,avg_obj/ncount,nCorrect*1.0/ncount,ncount)
+		print('---->lr: %f,loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.lr,loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss.data[0]))
+		if self.tf_logger is not None:
+			self.tf_logger.scalar_summary("loss_x", loss_x.data[0], self.seenbatches)
+			self.tf_logger.scalar_summary("loss_y", loss_y.data[0], self.seenbatches)
+			self.tf_logger.scalar_summary("loss_w", loss_w.data[0], self.seenbatches)
+			self.tf_logger.scalar_summary("loss_h", loss_h.data[0], self.seenbatches)
+			self.tf_logger.scalar_summary("loss_conf", loss_conf.data[0], self.seenbatches)
+			self.tf_logger.scalar_summary("loss_cls", loss_cls.data[0], self.seenbatches)
+			self.tf_logger.scalar_summary("loss_total", loss.data[0], self.seenbatches)
+
+
+			self.tf_logger.scalar_summary("GtAvgIOU", avg_iou/ncount, self.seenbatches)
+			self.tf_logger.scalar_summary("AvgObj", avg_obj/ncount, self.seenbatches)
+			self.tf_logger.scalar_summary("AvgRecall", nCorrect*1.0/ncount, self.seenbatches)
+			self.tf_logger.scalar_summary("count", ncount, self.seenbatches)
+
+
 		return loss

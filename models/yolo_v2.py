@@ -197,7 +197,6 @@ class yolo_v2(nn.Module):
 		models.append(EmptyModule())
 		layerInd_has_no_weights.append(28)
 		
-
 		#conv id =29
 		conv21 = nn.Sequential()
 		conv21.add_module('conv21',nn.Conv2d(1280,1024,3,1,1,bias=False))
@@ -364,9 +363,6 @@ class yolo_v2(nn.Module):
 					self.save_conv_bn(fp,model[0],model[1])
 				else:
 					self.save_conv(fp,model[0])
-
-
-
 
 	def convert2cpu(self,gpu_matrix):
 		return torch.FloatTensor(gpu_matrix.size()).copy_(gpu_matrix)

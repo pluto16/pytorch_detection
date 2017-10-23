@@ -12,7 +12,8 @@ This repository tries to achieve the following goals
 - [x] implement darknet loss
 - [x] implement train.py. 
 - [x] save as darknet weights
-- [ ] support tensorboard 
+- [x] support log to tensorboard
+- [x] support multi-gpu training  
 - [ ] add image preprocess step to boost model accuracy
 
 **NOTE:**

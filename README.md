@@ -1,7 +1,7 @@
 ### pytorch_detection
 This is a pytorch implementaion of YOLO v2 whichi attempts to reproduce the results of [project](https://pjreddie.com/darknet/yolo) and the [paper](https://arxiv.org/abs/1612.08242): YOLO9000: Better,Faster,Stronger by Joseph Redmon and Ali Farhadi.
 
-This project is based on this [project](https://github.com/marvis/pytorch-yolo2)
+This project is based on this project [pytorch-yolo2](https://github.com/marvis/pytorch-yolo2)
 
 This repository tries to achieve the following goals
 - [x] implement yolo v2 forward network using config yolo-voc.cfg

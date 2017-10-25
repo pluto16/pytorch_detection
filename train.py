@@ -41,7 +41,7 @@ if __name__=="__main__":
         valid_set_file     = data_options['valid']
         
         #training parameters
-        max_batches = 45000
+#       max_batches = 45000
         batch_size  = 40
         init_epoch    = 0
         max_epochs    = 100

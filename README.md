@@ -16,9 +16,12 @@ This repository tries to achieve the following goals
 - [x] support multi-gpu training  
 - [x] add image preprocess step to boost model accuracy get 0.7303@20171106
 - [ ] optimize code in yolo-v2 loss to reduce training time
+
 **NOTE:**
 This is still an experimental project. Model trained on VOC0712 train+val
+
 VOC07 test mAP is 0.5630 @20171019 <br>
+
 VOC07 test mAp is 0.7303 @20171106 <br>
         AP for aeroplane       = 0.784 <br>
         AP for bicycle         = 0.783 <br>

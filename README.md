@@ -14,8 +14,8 @@ This repository tries to achieve the following goals
 - [x] save as darknet weights
 - [x] support log to tensorboard
 - [x] support multi-gpu training  
-- [ ] add image preprocess step to boost model accuracy
-
+- [x] add image preprocess step to boost model accuracy get 0.7303@20171106
+- [ ] optimize code in yolo-v2 loss to reduce training time
 **NOTE:**
 This is still an experimental project. Model trained on VOC0712 train+val
 VOC07 test mAP is 0.5630 @20171019 <br>

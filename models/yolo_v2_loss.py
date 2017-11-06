@@ -90,7 +90,7 @@ class yolo_v2_loss(nn.Module):
 					for n in xrange(nA):
 						cur_pred_box = pred_boxes_cpu[b*nAnchors+n*nPixels+j*nW+i]
 						best_iou = 0
-						for t in xrange(50):
+						for t in xrange(30):
 							if target[b][t*5+1] == 0:
 								break
 							gx = target[b][t*5+1]*nW
@@ -119,7 +119,7 @@ class yolo_v2_loss(nn.Module):
 		avg_obj= 0
 		ncount = 0
 		for b in xrange(nB):
-			for t in xrange(50):
+			for t in xrange(30):
 				if target[b][t*5+1] == 0:
 					break
 				nGT = nGT + 1
@@ -150,7 +150,7 @@ class yolo_v2_loss(nn.Module):
 				ty_target[b][best_n][gj][gi] = target[b][t*5+2] * nH - gj
 				tw_target[b][best_n][gj][gi] = math.log(target[b][t*5+3]* nW /self.anchors[self.anchor_step*best_n])
 				th_target[b][best_n][gj][gi] = math.log(target[b][t*5+4]* nH /self.anchors[self.anchor_step*best_n+1])
-				coord_mask[b][best_n][gj][gi] = self.coord_scale#self.coord_scale*(2-target[b][t*5+3]*target[b][t*5+4])
+				coord_mask[b][best_n][gj][gi] = self.coord_scale*(2-target[b][t*5+3]*target[b][t*5+4])
 				
 				iou = bbox_iou(gt_box, pred_box, x1y1x2y2=False) # best_iou
 				tconf_target[b][best_n][gj][gi] = iou

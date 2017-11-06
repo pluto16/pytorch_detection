@@ -204,6 +204,7 @@ class yolo_v2(nn.Module):
 		conv21.add_module('leaky21',nn.LeakyReLU(0.1,inplace=True))
 		models.append(conv21)
 
+		#conv id = 30
 		conv22 = nn.Sequential()
 		conv22.add_module('conv22',nn.Conv2d(1024,125,1,1,0))
 		models.append(conv22)
@@ -340,19 +341,18 @@ class yolo_v2(nn.Module):
 		#print self.models
 		for ind,model in enumerate(self.models):
 			if ind not in self.layerInd_has_no_weights:
+				if start>= len(buf):
+					continue
 				if ind !=30:
 					#print model[0]
 					#print model[1]
-					if start>=len(buf):
-						continue
 					start = self.load_conv_bn(buf, start, model[0], model[1])	
 				else:
-					if start>=len(buf):
-						continue
 					start = self.load_conv(buf,start,model[0])
 		print "weight file loading finished"
 	def save_weights(self,weight_file):
 		fp = open(weight_file,'wb')
+		print "save weight to file {}".format(weight_file)
 		header = np.asarray([0,0,0,self.seen],dtype=np.int32)
 		header.tofile(fp)
 
@@ -363,7 +363,7 @@ class yolo_v2(nn.Module):
 					self.save_conv_bn(fp,model[0],model[1])
 				else:
 					self.save_conv(fp,model[0])
-
+		print "save weights finished"
 	def convert2cpu(self,gpu_matrix):
 		return torch.FloatTensor(gpu_matrix.size()).copy_(gpu_matrix)
 

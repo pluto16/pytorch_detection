@@ -45,7 +45,7 @@ def detect(namesfile, weightfile, imgfile):
 	nms_thresh  = 0.45
 	model = yolo_v2()
 	model.load_weights(weightfile)
-
+	#model.save_weights('weights/save_test.weights')
 	if torch.cuda.is_available():
 		model.cuda()
 	model.eval()
@@ -75,7 +75,7 @@ def detect(namesfile, weightfile, imgfile):
 	#print(boxes)
 	print("{}: Predicted in {} seconds.".format(imgfile, (finish-start)))
 	class_names = load_class_names(namesfile)
-	plot_boxes(siezd,boxes, 'predictions.jpg',class_names)
+	plot_boxes(img_orig,boxes, 'predictions.jpg',class_names)
 
 
 if __name__=='__main__':

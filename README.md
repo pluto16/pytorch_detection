@@ -18,27 +18,28 @@ This repository tries to achieve the following goals
 
 **NOTE:**
 This is still an experimental project. Model trained on VOC0712 train+val
-VOC07 test mAP is 0.5630 .@20171019 <br>
-        AP for aeroplane       = 0.6112<br>
-        AP for bicycle         = 0.6072<br>
-        AP for bird            = 0.5375<br>
-        AP for boat            = 0.4433<br>
-        AP for bottle          = 0.3031<br>
-        AP for bus             = 0.6043<br>
-        AP for car             = 0.6910<br>
-        AP for cat             = 0.6765<br>
-        AP for chair           = 0.3610<br>
-        AP for cow             = 0.5653<br>
-        AP for diningtable     = 0.5538<br>
-        AP for dog             = 0.6461<br>
-        AP for horse           = 0.6997<br>
-        AP for motorbike       = 0.6625<br>
-        AP for person          = 0.6411<br>
-        AP for pottedplant     = 0.3036<br>
-        AP for sheep           = 0.5476<br>
-        AP for sofa            = 0.5416<br>
-        AP for train           = 0.6940<br>
-        AP for tvmonitor       = 0.5701<br>
+VOC07 test mAP is 0.5630 @20171019 <br>
+VOC07 test mAp is 0.7303 @20171106 <br>
+        AP for aeroplane       = 0.784 <br>
+        AP for bicycle         = 0.783 <br>
+        AP for bird            = 0.754 <br>
+        AP for boat            = 0.648 <br>
+        AP for bottle          = 0.481 <br>
+        AP for bus             = 0.777 <br>
+        AP for car             = 0.824 <br>
+        AP for cat             = 0.841 <br>
+        AP for chair           = 0.56  <br>
+        AP for cow             = 0.772 <br>
+        AP for diningtable     = 0.719 <br>
+        AP for dog             = 0.79  <br>
+        AP for horse           = 0.807 <br>
+        AP for motorbike       = 0.784 <br>
+        AP for person          = 0.753 <br>
+        AP for pottedplant     = 0.53  <br>
+        AP for sheep           = 0.765 <br>
+        AP for sofa            = 0.708 <br>
+        AP for train           = 0.818 <br>
+        AP for tvmonitor       = 0.709 <br>
 
 ### Detection Using a Pretrained Model
 ```

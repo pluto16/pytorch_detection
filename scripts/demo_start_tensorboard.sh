@@ -1,3 +1,3 @@
 
 
-tensorboard --logdir='./logs/log_20171023_160553' --port=6006
+tensorboard --logdir='./logs/log_20171104_112628' --port=6006
